@@ -7,9 +7,9 @@
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="vn.company.controller.EmployeeController">
 
-    <left>
+    <right>
         <VBox styleClass="card" spacing="12" prefWidth="380">
-            <BorderPane.margin><Insets top="14" right="7" bottom="14" left="14"/></BorderPane.margin>
+            <BorderPane.margin><Insets top="14" right="14" bottom="14" left="7"/></BorderPane.margin>
             <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
 
             <Label text="Thông tin nhân viên" styleClass="card-title"/>
@@ -77,11 +77,11 @@
                         styleClass="btn-plain" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
             </GridPane>
         </VBox>
-    </left>
+    </right>
 
     <center>
         <VBox styleClass="card" spacing="12">
-            <BorderPane.margin><Insets top="14" right="14" bottom="14" left="7"/></BorderPane.margin>
+            <BorderPane.margin><Insets top="14" right="7" bottom="14" left="14"/></BorderPane.margin>
             <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
 
             <HBox spacing="8" alignment="CENTER_LEFT">
