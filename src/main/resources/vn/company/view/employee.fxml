@@ -12,7 +12,8 @@
             <BorderPane.margin><Insets top="14" right="14" bottom="14" left="7"/></BorderPane.margin>
             <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
 
-            <Label text="Thông tin nhân viên" styleClass="card-title"/>
+            <Label fx:id="lblFormTitle" text="Thông tin nhân viên" styleClass="card-title"/>
+            <Label fx:id="lblFormHint" styleClass="form-hint" wrapText="true" maxWidth="Infinity"/>
 
             <GridPane hgap="10" vgap="9">
                 <columnConstraints>
@@ -50,7 +51,7 @@
                 <Label text="Người giám sát" GridPane.rowIndex="8"/>
                 <HBox spacing="6" GridPane.rowIndex="8" GridPane.columnIndex="1">
                     <ComboBox fx:id="cboSupervisor" promptText="(Không có)" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
-                    <Button text="✕" onAction="#onClearSupervisor" styleClass="btn-icon">
+                    <Button fx:id="btnClearSupervisor" text="✕" onAction="#onClearSupervisor" styleClass="btn-icon">
                         <tooltip><Tooltip text="Bỏ chọn người giám sát"/></tooltip>
                     </Button>
                 </HBox>
@@ -62,20 +63,21 @@
 
             <Region VBox.vgrow="ALWAYS"/>
 
-            <GridPane hgap="8" vgap="8">
-                <columnConstraints>
-                    <ColumnConstraints percentWidth="50"/>
-                    <ColumnConstraints percentWidth="50"/>
-                </columnConstraints>
-                <Button fx:id="btnAdd" text="Thêm" onAction="#onAdd" maxWidth="Infinity"
-                        styleClass="btn-primary" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-                <Button fx:id="btnUpdate" text="Cập nhật" onAction="#onUpdate" maxWidth="Infinity"
-                        styleClass="btn-success" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-                <Button fx:id="btnDelete" text="Xóa" onAction="#onDelete" maxWidth="Infinity"
-                        styleClass="btn-danger" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <Button text="Làm mới" onAction="#onClear" maxWidth="Infinity"
-                        styleClass="btn-plain" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
-            </GridPane>
+            <!-- Chế độ xem -->
+            <HBox fx:id="viewActions" spacing="8">
+                <Button fx:id="btnEdit" text="Sửa" onAction="#onEdit" maxWidth="Infinity" prefWidth="100"
+                        HBox.hgrow="ALWAYS" styleClass="btn-primary"/>
+                <Button fx:id="btnDelete" text="Xóa" onAction="#onDelete" maxWidth="Infinity" prefWidth="100"
+                        HBox.hgrow="ALWAYS" styleClass="btn-danger"/>
+            </HBox>
+
+            <!-- Chế độ thêm mới / sửa -->
+            <HBox fx:id="editActions" spacing="8">
+                <Button text="Lưu" onAction="#onSave" maxWidth="Infinity" prefWidth="100"
+                        HBox.hgrow="ALWAYS" styleClass="btn-success"/>
+                <Button text="Hủy" onAction="#onCancel" cancelButton="true" maxWidth="Infinity" prefWidth="100"
+                        HBox.hgrow="ALWAYS" styleClass="btn-plain"/>
+            </HBox>
         </VBox>
     </right>
 
@@ -88,7 +90,9 @@
                 <Label text="Danh sách nhân viên" styleClass="card-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <TextField fx:id="txtSearch" promptText="Tìm SSN, tên, địa chỉ..." prefWidth="260" onAction="#onSearch"/>
-                <Button text="Tìm" onAction="#onSearch" styleClass="btn-primary"/>
+                <Button text="Tìm" onAction="#onSearch" styleClass="btn-plain"/>
+                <Button text="Làm mới" onAction="#onReload" styleClass="btn-plain"/>
+                <Button fx:id="btnNew" text="+ Thêm mới" onAction="#onNew" styleClass="btn-primary"/>
             </HBox>
 
             <TableView fx:id="table" VBox.vgrow="ALWAYS">

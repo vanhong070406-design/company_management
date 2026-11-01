@@ -79,8 +79,23 @@
     -fx-background-radius: 6;
 }
 
-.text-field:disabled, .combo-box:disabled {
+/* Form ở chế độ xem bị khóa nhưng chữ vẫn phải đọc rõ */
+.text-field:disabled, .combo-box:disabled, .radio-button:disabled {
     -fx-opacity: 0.75;
+}
+
+.date-picker:disabled {
+    -fx-opacity: 1;
+}
+
+.form-hint {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 12px;
+}
+
+.form-hint-warning {
+    -fx-text-fill: #b91c1c;
+    -fx-font-weight: bold;
 }
 
 .error, .error .text-field {

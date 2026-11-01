@@ -4,6 +4,7 @@ import javafx.beans.property.SimpleObjectProperty;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Control;
 import javafx.scene.control.DatePicker;
+import javafx.scene.control.ListCell;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TextInputControl;
@@ -111,6 +112,17 @@ public final class Fx {
     /** Chọn phần tử đầu tiên thỏa điều kiện trong ComboBox (hoặc bỏ chọn nếu không có). */
     public static <T> void select(ComboBox<T> cbo, Predicate<T> match) {
         cbo.setValue(cbo.getItems().stream().filter(match).findFirst().orElse(null));
+    }
+
+    /** Hiện lại promptText sau khi bỏ chọn (mặc định ComboBox để trống ô trong trường hợp này). */
+    public static <T> void keepPromptText(ComboBox<T> cbo) {
+        cbo.setButtonCell(new ListCell<>() {
+            @Override
+            protected void updateItem(T item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? cbo.getPromptText() : item.toString());
+            }
+        });
     }
 
     public static void markError(Control c) {

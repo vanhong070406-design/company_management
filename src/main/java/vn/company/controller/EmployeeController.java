@@ -4,6 +4,9 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.HBox;
 import vn.company.dao.DepartmentDAO;
 import vn.company.dao.EmployeeDAO;
 import vn.company.model.Department;
@@ -15,10 +18,14 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /** Màn hình Nhân viên – bảng EMPLOYEE */
 public class EmployeeController {
+
+    /** VIEW: form chỉ đọc; ADD/EDIT: đang nhập liệu. */
+    private enum Mode { VIEW, ADD, EDIT }
 
     private static final BigDecimal MAX_SALARY = new BigDecimal("99999999.99"); // DECIMAL(10,2)
 
@@ -27,7 +34,9 @@ public class EmployeeController {
     @FXML private RadioButton rdoMale, rdoFemale;
     @FXML private ComboBox<Employee> cboSupervisor;
     @FXML private ComboBox<Department> cboDepartment;
-    @FXML private Button btnAdd, btnUpdate, btnDelete;
+    @FXML private Button btnNew, btnEdit, btnDelete, btnClearSupervisor;
+    @FXML private HBox viewActions, editActions;
+    @FXML private Label lblFormTitle, lblFormHint;
 
     @FXML private TableView<Employee> table;
     @FXML private TableColumn<Employee, String> colSsn, colName, colSex, colAddress, colSupervisor, colDepartment;
@@ -39,6 +48,10 @@ public class EmployeeController {
     private final DepartmentDAO departmentDAO = new DepartmentDAO();
     private final ObservableList<Employee> data = FXCollections.observableArrayList();
 
+    private Mode mode = Mode.VIEW;
+    private List<Object> originalForm = List.of(); // giá trị form lúc bắt đầu nhập, để phát hiện thay đổi
+    private boolean reloading; // đang nạp lại bảng: bỏ qua sự kiện đổi dòng chọn
+
     @FXML
     private void initialize() {
         ToggleGroup sex = new ToggleGroup();
@@ -46,6 +59,8 @@ public class EmployeeController {
         rdoFemale.setToggleGroup(sex);
         rdoMale.setSelected(true);
         Fx.setupDatePicker(dpBdate);
+        Fx.keepPromptText(cboSupervisor);
+        Fx.keepPromptText(cboDepartment);
 
         Fx.bind(colSsn, Employee::getSsn);
         Fx.bind(colName, Employee::getFullName);
@@ -60,31 +75,62 @@ public class EmployeeController {
         table.setItems(data);
 
         table.getSelectionModel().selectedItemProperty().addListener((obs, old, e) -> {
-            if (e != null) showOnForm(e);
-            else txtSsn.setDisable(false);
-            updateButtons();
+            if (!reloading) showSelection();
         });
-        updateButtons();
+
+        // Có thay đổi chưa lưu thì không cho đổi dòng chọn; vẫn cuộn và sắp xếp được để tra cứu
+        table.setRowFactory(tv -> {
+            TableRow<Employee> row = new TableRow<>();
+            row.addEventFilter(MouseEvent.MOUSE_PRESSED, ev -> {
+                if (hasUnsavedChanges()) {
+                    ev.consume();
+                    warnListLocked();
+                }
+            });
+            return row;
+        });
+        table.addEventFilter(KeyEvent.KEY_PRESSED, ev -> {
+            if (ev.getCode().isNavigationKey() && hasUnsavedChanges()) {
+                ev.consume();
+                warnListLocked();
+            }
+        });
+
+        viewActions.managedProperty().bind(viewActions.visibleProperty());
+        editActions.managedProperty().bind(editActions.visibleProperty());
+        setMode(Mode.VIEW);
     }
 
     // ============================================================ Tải dữ liệu
 
     public void refresh() {
-        String selectedSsn = selectedSsn();
         try {
+            // Giữ nguyên lựa chọn trên form vì danh sách mới chứa các đối tượng khác
+            Employee supervisor = cboSupervisor.getValue();
+            Department department = cboDepartment.getValue();
             cboDepartment.setItems(FXCollections.observableArrayList(departmentDAO.findLookup()));
             cboSupervisor.setItems(FXCollections.observableArrayList(employeeDAO.findLookup()));
+            Fx.select(cboSupervisor, s -> supervisor != null && s.getSsn().equals(supervisor.getSsn()));
+            Fx.select(cboDepartment, d -> department != null && d.getDnumber() == department.getDnumber());
             loadTable();
-            reselect(selectedSsn);
         } catch (SQLException e) {
             Dialogs.sqlError("Không tải được danh sách nhân viên", e);
         }
     }
 
+    /** Nạp lại bảng, giữ dòng đang chọn; không đụng tới dữ liệu đang nhập trên form. */
     private void loadTable() throws SQLException {
         List<Employee> list = employeeDAO.search(txtSearch.getText());
-        data.setAll(list);
+        String selectedSsn = selectedSsn();
+        reloading = true;
+        try {
+            data.setAll(list);
+            reselect(selectedSsn);
+        } finally {
+            reloading = false;
+        }
         lblStatus.setText("Tổng số: " + list.size() + " nhân viên");
+        if (mode == Mode.VIEW) showSelection();
     }
 
     // ============================================================== Sự kiện
@@ -98,38 +144,63 @@ public class EmployeeController {
         }
     }
 
+    /** Làm mới danh sách từ database; không ảnh hưởng dữ liệu đang nhập trên form. */
     @FXML
-    private void onAdd() {
+    private void onReload() {
+        txtSearch.clear();
+        refresh();
+    }
+
+    @FXML
+    private void onNew() {
+        table.getSelectionModel().clearSelection();
+        clearForm();
+        beginInput(Mode.ADD);
+        txtSsn.requestFocus();
+    }
+
+    @FXML
+    private void onEdit() {
+        if (table.getSelectionModel().getSelectedItem() == null) return;
+        beginInput(Mode.EDIT);
+        txtFname.requestFocus();
+    }
+
+    @FXML
+    private void onSave() {
         Employee e = readForm();
         if (e == null) return;
+        boolean adding = mode == Mode.ADD;
         try {
-            if (employeeDAO.exists(e.getSsn())) {
-                Fx.markError(txtSsn);
-                Dialogs.warn("Trùng SSN", "Đã có nhân viên với SSN " + e.getSsn() + ".");
-                return;
+            if (adding) {
+                if (employeeDAO.exists(e.getSsn())) {
+                    Fx.markError(txtSsn);
+                    Dialogs.warn("Trùng SSN", "Đã có nhân viên với SSN " + e.getSsn() + ".");
+                    return;
+                }
+                employeeDAO.insert(e);
+                txtSearch.clear(); // để chắc chắn nhìn thấy nhân viên vừa thêm trong danh sách
+            } else {
+                employeeDAO.update(e);
             }
-            employeeDAO.insert(e);
+            setMode(Mode.VIEW);
             refresh();
             reselect(e.getSsn());
-            Dialogs.info("Đã thêm nhân viên " + e.getFullName() + ".");
+            Dialogs.info(adding
+                    ? "Đã thêm nhân viên " + e.getFullName() + "."
+                    : "Đã cập nhật nhân viên " + e.getSsn() + ".");
         } catch (SQLException ex) {
-            Dialogs.sqlError("Không thêm được nhân viên", ex);
+            Dialogs.sqlError(adding ? "Không thêm được nhân viên" : "Không cập nhật được nhân viên", ex);
         }
     }
 
     @FXML
-    private void onUpdate() {
-        if (table.getSelectionModel().getSelectedItem() == null) return;
-        Employee e = readForm();
-        if (e == null) return;
-        try {
-            employeeDAO.update(e);
-            refresh();
-            reselect(e.getSsn());
-            Dialogs.info("Đã cập nhật nhân viên " + e.getSsn() + ".");
-        } catch (SQLException ex) {
-            Dialogs.sqlError("Không cập nhật được nhân viên", ex);
+    private void onCancel() {
+        if (hasUnsavedChanges()
+                && !Dialogs.confirm("Hủy thay đổi", "Các thông tin vừa nhập chưa được lưu sẽ bị mất. Bạn có chắc muốn hủy?")) {
+            return;
         }
+        showSelection();
     }
 
     @FXML
@@ -149,19 +220,11 @@ public class EmployeeController {
             if (!Dialogs.confirm("Xác nhận xóa", msg)) return;
 
             employeeDAO.deleteCascade(e.getSsn());
-            clearForm();
             refresh();
             Dialogs.info("Đã xóa nhân viên " + e.getSsn() + ".");
         } catch (SQLException ex) {
             Dialogs.sqlError("Không xóa được nhân viên", ex);
         }
-    }
-
-    @FXML
-    private void onClear() {
-        clearForm();
-        txtSearch.clear();
-        refresh();
     }
 
     @FXML
@@ -174,11 +237,12 @@ public class EmployeeController {
     private void showOnForm(Employee e) {
         Fx.clearErrors(txtSsn, txtFname, txtMinit, txtLname, txtAddress, txtSalary, dpBdate, cboDepartment);
         txtSsn.setText(e.getSsn());
-        txtSsn.setDisable(true); // khóa chính, không cho sửa
         txtFname.setText(e.getFname());
         txtMinit.setText(e.getMinit());
         txtLname.setText(e.getLname());
         dpBdate.setValue(e.getBdate());
+        // setValue không cập nhật ô nhập nếu giá trị không đổi, nên chữ gõ dở phải được ghi đè
+        dpBdate.getEditor().setText(e.getBdate() == null ? "" : Fx.DATE.format(e.getBdate()));
         rdoMale.setSelected(!"F".equalsIgnoreCase(e.getSex()));
         rdoFemale.setSelected("F".equalsIgnoreCase(e.getSex()));
         txtAddress.setText(e.getAddress());
@@ -276,26 +340,90 @@ public class EmployeeController {
     }
 
     private void clearForm() {
-        table.getSelectionModel().clearSelection();
         Fx.clearErrors(txtSsn, txtFname, txtMinit, txtLname, txtAddress, txtSalary, dpBdate, cboDepartment);
         for (TextField tf : List.of(txtSsn, txtFname, txtMinit, txtLname, txtAddress, txtSalary)) tf.clear();
-        txtSsn.setDisable(false);
         Fx.clearDate(dpBdate);
         rdoMale.setSelected(true);
         cboSupervisor.setValue(null);
         cboDepartment.setValue(null);
-        txtSsn.requestFocus();
-        updateButtons();
+    }
+
+    /** Các giá trị hiện tại trên form, dùng để so sánh xem người dùng đã nhập gì chưa. */
+    private List<Object> formValues() {
+        Employee supervisor = cboSupervisor.getValue();
+        Department department = cboDepartment.getValue();
+        return Arrays.asList(
+                Fx.text(txtSsn), Fx.text(txtFname), Fx.text(txtMinit), Fx.text(txtLname),
+                Fx.text(dpBdate.getEditor()), rdoFemale.isSelected(),
+                Fx.text(txtAddress), Fx.text(txtSalary),
+                supervisor == null ? null : supervisor.getSsn(),
+                department == null ? null : department.getDnumber());
+    }
+
+    // ========================================================= Trạng thái form
+
+    /** Về chế độ xem: hiển thị dòng đang chọn, hoặc form trống nếu không chọn dòng nào. */
+    private void showSelection() {
+        Employee e = table.getSelectionModel().getSelectedItem();
+        if (e != null) showOnForm(e);
+        else clearForm();
+        setMode(Mode.VIEW);
+    }
+
+    private void beginInput(Mode inputMode) {
+        originalForm = formValues();
+        setMode(inputMode);
+    }
+
+    private boolean hasUnsavedChanges() {
+        return mode != Mode.VIEW && !formValues().equals(originalForm);
+    }
+
+    private void setMode(Mode newMode) {
+        mode = newMode;
+        boolean viewing = mode == Mode.VIEW;
+        boolean selected = table.getSelectionModel().getSelectedItem() != null;
+
+        // SSN là khóa chính nên chỉ được nhập khi thêm mới
+        txtSsn.setDisable(mode != Mode.ADD);
+        for (Control c : List.of(txtFname, txtMinit, txtLname, dpBdate, rdoMale, rdoFemale,
+                txtAddress, txtSalary, cboSupervisor, btnClearSupervisor, cboDepartment)) {
+            c.setDisable(viewing);
+        }
+
+        viewActions.setVisible(viewing);
+        editActions.setVisible(!viewing);
+        btnNew.setDisable(!viewing);
+        btnEdit.setDisable(!selected);
+        btnDelete.setDisable(!selected);
+
+        lblFormHint.getStyleClass().remove("form-hint-warning");
+        switch (mode) {
+            case ADD -> {
+                lblFormTitle.setText("Thêm nhân viên mới");
+                lblFormHint.setText("Nhập thông tin rồi bấm Lưu, hoặc Hủy để bỏ qua.");
+            }
+            case EDIT -> {
+                lblFormTitle.setText("Sửa nhân viên " + Fx.text(txtSsn));
+                lblFormHint.setText("Chỉnh sửa thông tin rồi bấm Lưu, hoặc Hủy để bỏ qua.");
+            }
+            case VIEW -> {
+                lblFormTitle.setText("Thông tin nhân viên");
+                lblFormHint.setText(selected
+                        ? "Bấm Sửa để thay đổi thông tin nhân viên này."
+                        : "Chọn một nhân viên trong danh sách, hoặc bấm Thêm mới.");
+            }
+        }
+    }
+
+    private void warnListLocked() {
+        lblFormHint.setText("Bạn có thay đổi chưa lưu. Hãy bấm Lưu hoặc Hủy trước khi chọn nhân viên khác.");
+        if (!lblFormHint.getStyleClass().contains("form-hint-warning")) {
+            lblFormHint.getStyleClass().add("form-hint-warning");
+        }
     }
 
     // ============================================================== Tiện ích
-
-    private void updateButtons() {
-        boolean selected = table.getSelectionModel().getSelectedItem() != null;
-        btnAdd.setDisable(selected);
-        btnUpdate.setDisable(!selected);
-        btnDelete.setDisable(!selected);
-    }
 
     private String selectedSsn() {
         Employee e = table.getSelectionModel().getSelectedItem();
