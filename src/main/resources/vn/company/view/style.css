@@ -1,0 +1,144 @@
+.root {
+    -fx-font-family: "Segoe UI", "Roboto", "Helvetica Neue", sans-serif;
+    -fx-font-size: 13px;
+    -fx-accent: #2563eb;
+    -fx-focus-color: #2563eb;
+    -fx-faint-focus-color: #2563eb22;
+}
+
+.root-pane {
+    -fx-background-color: #f1f5f9;
+}
+
+/* ---------- Header ---------- */
+.header {
+    -fx-background-color: #1e3a8a;
+}
+
+.header .header-title {
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.header .header-subtitle {
+    -fx-text-fill: #bfdbfe;
+    -fx-font-size: 12px;
+}
+
+.header .connection {
+    -fx-text-fill: #86efac;
+}
+
+.header .connection.disconnected {
+    -fx-text-fill: #fca5a5;
+}
+
+.btn-header {
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-text-fill: white;
+    -fx-background-radius: 6;
+    -fx-padding: 6 14;
+    -fx-cursor: hand;
+}
+
+.btn-header:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.24);
+}
+
+
+/* ---------- Card ---------- */
+.card {
+    -fx-background-color: white;
+    -fx-background-radius: 10;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.08), 12, 0, 0, 2);
+}
+
+.card-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0f172a;
+}
+
+.card-subtitle {
+    -fx-font-weight: bold;
+    -fx-text-fill: #334155;
+}
+
+.label {
+    -fx-text-fill: #334155;
+}
+
+.status {
+    -fx-text-fill: #64748b;
+    -fx-font-size: 12px;
+}
+
+/* ---------- Inputs ---------- */
+.text-field, .combo-box, .date-picker {
+    -fx-background-radius: 6;
+}
+
+.text-field:disabled, .combo-box:disabled {
+    -fx-opacity: 0.75;
+}
+
+.error, .error .text-field {
+    -fx-border-color: #dc2626;
+    -fx-border-radius: 6;
+}
+
+/* ---------- Buttons ---------- */
+.button {
+    -fx-background-radius: 6;
+    -fx-padding: 8 14;
+    -fx-cursor: hand;
+    -fx-font-weight: bold;
+}
+
+.btn-primary { -fx-background-color: #2563eb; -fx-text-fill: white; }
+.btn-primary:hover { -fx-background-color: #1d4ed8; }
+
+.btn-success { -fx-background-color: #059669; -fx-text-fill: white; }
+.btn-success:hover { -fx-background-color: #047857; }
+
+.btn-danger { -fx-background-color: #dc2626; -fx-text-fill: white; }
+.btn-danger:hover { -fx-background-color: #b91c1c; }
+
+.btn-plain { -fx-background-color: #e2e8f0; -fx-text-fill: #0f172a; }
+.btn-plain:hover { -fx-background-color: #cbd5e1; }
+
+.btn-icon {
+    -fx-background-color: #e2e8f0;
+    -fx-text-fill: #475569;
+    -fx-padding: 6 10;
+}
+.btn-icon:hover { -fx-background-color: #cbd5e1; }
+
+.button:disabled {
+    -fx-opacity: 0.45;
+}
+
+/* ---------- Table ---------- */
+.table-view {
+    -fx-background-radius: 6;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 6;
+}
+
+.table-view .column-header {
+    -fx-background-color: #f8fafc;
+}
+
+.table-view .column-header .label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #475569;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #dbeafe;
+}
+
+.table-row-cell:selected .text {
+    -fx-fill: #0f172a;
+}
